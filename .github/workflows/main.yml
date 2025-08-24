@@ -1,3 +1,27 @@
+name: Build ReverseX
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Micromamba env (pythonocc-core)
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: "latest"
+          environment-name: reversex
+          init-shell: pwsh
+          channels: conda-forge
+          create-args: >
+            python=3.10
+            pythonocc-core
+
       - name: Pip deps
         shell: pwsh
         run: |
@@ -16,3 +40,11 @@
           choco install innosetup --no-progress -y
           $env:Path += ";C:\Program Files (x86)\Inno Setup 6"
           iscc.exe installer\inno_setup.iss
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReverseX-Installer
+          path: |
+            dist/ReverseX/**
+            installer/dist/ReverseXSetup.exe
