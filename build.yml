@@ -1,0 +1,54 @@
+name: Build ReverseX
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show file tree
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -File | Select-Object FullName
+
+      - name: Micromamba env (pythonocc-core)
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          micromamba-version: "latest"
+          environment-name: reversex
+          init-shell: pwsh
+          channels: conda-forge
+          create-args: >-
+            python=3.10
+            pythonocc-core
+
+      - name: Pip deps
+        shell: pwsh
+        run: |
+          micromamba run -n reversex python -m pip install --upgrade pip
+          micromamba run -n reversex pip install -r app/requirements.txt pyinstaller
+
+      - name: PyInstaller build (portable)
+        shell: pwsh
+        run: |
+          micromamba run -n reversex pyinstaller --noconsole --name ReverseX --add-data "app/engine/auto_reverse_basic.py;engine" app/app.py
+
+      - name: Inno Setup installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $env:Path += ";C:\Program Files (x86)\Inno Setup 6"
+          iscc.exe installer/inno_setup.iss
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReverseX-Installer
+          path: |
+            dist/ReverseX/**
+            installer/dist/ReverseXSetup.exe
