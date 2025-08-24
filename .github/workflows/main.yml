@@ -1,4 +1,4 @@
-name: Сборка Установщика ReverseX
+name: Сборка ReverseX
 
 on:
   workflow_dispatch:
@@ -8,11 +8,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Забираем репозиторий
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Устанавливаем Micromamba и сразу создаём окружение с нужными СONDA-пакетами
       - name: Micromamba env
         uses: mamba-org/setup-micromamba@v1
         with:
@@ -24,33 +22,29 @@ jobs:
             pythonocc-core
           channels: conda-forge
 
-      # Устанавливаем pip-зависимости в созданное окружение
       - name: Pip deps
         shell: powershell
         run: |
           micromamba run -n reversex python -m pip install --upgrade pip
-          micromamba run -n reversex pip install PySide6 trimesh numpy pyinstaller
+          micromamba run -n reversex pip install -r приложение/requirements.txt pyinstaller
 
-      # Собираем portable (папка dist/ReverseX с ReverseX.exe)
-      - name: PyInstaller (onedir)
+      - name: PyInstaller build
         shell: powershell
         run: |
           micromamba run -n reversex pyinstaller --noconsole --name ReverseX `
-            --add-data "app\engine\auto_reverse_basic.py;engine" app\app.py
+            --add-data "приложение/auto_reverse_basic.py;engine" приложение/app.py
 
-      # Ставим Inno Setup для сборки инсталлятора
-      - name: Install Inno Setup
+      - name: Inno Setup
         shell: powershell
         run: |
           choco install innosetup --no-progress -y
           $env:Path += ";C:\Program Files (x86)\Inno Setup 6"
-          iscc.exe installer\inno_setup.iss
+          iscc.exe "Установщик/inno_setup.iss"
 
-      # Отдаём артефакты
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ReverseX-Installer
           path: |
-            dist\ReverseX\**                  # portable
-            installer\dist\ReverseXSetup.exe  # установщик
+            dist/ReverseX/**
+            Установщик/Output/*
